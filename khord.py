@@ -1,15 +1,21 @@
 from random import randint, choice
+from enum import Enum
 import re
 
 import discord
 from discord.ext import commands
 
 bot = commands.Bot(command_prefix=';')
-rps_choices = ["rock", "newspaper", "scissors"]
+class rps(Enum):
+    ROCK = 1
+    PAPER = 2
+    SCISSORS = 3
+
 dnd_characters = ["Snorck", "Vikkus", "Nova'Norr", "Mateus", "Viktor", "Rilk"]
 
 @bot.command()
 async def hello(ctx):
+    """Respond to user with a simple 'hello'"""
     await ctx.send("Hello, mortal.")
 
 @bot.command()
@@ -28,17 +34,20 @@ async def roll(ctx, arg1, arg2=1):
         
 @bot.command()
 async def rock(ctx):
-    result = rps_game("rock")
+    """';rock' calls for Rock Paper Scissors with rock"""
+    result = rps_game(rps.ROCK)
     await ctx.send(result)
 
 @bot.command()
 async def paper(ctx):
-    result = rps_game("newspaper")
+    """';paper' calls for Rock Paper Scissors with paper"""
+    result = rps_game(rps.PAPER)
     await ctx.send(result)
 
 @bot.command()
 async def scissors(ctx):
-    result = rps_game("scissors")
+    """';scissors' calls for Rock Paper Scissors with scissors"""
+    result = rps_game(rps.SCISSORS)
     await ctx.send(result)
 
 @bot.command()
@@ -47,12 +56,22 @@ async def randchar(ctx):
 
 def rps_game(player_choice):
     bool_victory = False
-    npc_choice = choice(rps_choices)
-    if ((player_choice == "rock" and npc_choice == "scissors") or
-        (player_choice == "scissors" and npc_choice == "newspaper") or
-        (player_choice == "newspaper" and npc_choice =="rock")):
+    npc_choice = rps(randint(1,3))
+
+    if ((player_choice == rps.ROCK and npc_choice == rps.SCISSORS) or
+        (player_choice == rps.SCISSORS and npc_choice == rps.PAPER) or
+        (player_choice == rps.PAPER and npc_choice == rps.PAPER)):
             bool_victory = True
-    outcome_statement = f":{player_choice}: ***vs.*** :{npc_choice}:"
+
+    outcome_statement = f":{player_choice}: ***vs.*** :{npc_choice}:\n"
+
+    if bool_victory:
+        outcome_statement = outcome_statement + "Purely luck, mortal. :white_check_mark:"
+    elif not bool_victory and player_choice == npc_choice:
+        outcome_statement += "Hmm. Interesting."
+    else:
+        outcome_statement += "As expected from a feeble mind. I win. :x:"
+
     return (outcome_statement)
 
 
@@ -69,4 +88,4 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-bot.run("")
+bot.run("ODUyMzE4NjM5NjQyNTA5MzIy.YMFFlw.6c-444mJsxYJosc3YFjlJdzOlZo")
