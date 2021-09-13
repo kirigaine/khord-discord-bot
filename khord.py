@@ -1,15 +1,38 @@
-"""Project Name: Khord Discord Bot"""
-from random import randint, choice, shuffle
+"""
+*********************************************************************************
+* |```|   /```|  |```|   |```|   /```````````\   |`````````\    |``````````\    *
+* |   |  /   /   |   |   |   |   |   .___.   |   |   .__.   |   |   .___.   \   *
+* |   | /   /    |   |   |   |   |   |   |   |   |   |  |   |   |   |   |    |  *
+* |   |/   /     |   |___|   |   |   |   |   |   |   |__|   /   |   |   |    |  *
+* |       /      |           |   |   |   |   |   |         /    |   |   |    |  *
+* |       \      |    ___    |   |   |   |   |   |    __   \    |   |   |    |  *
+* |        \     |   |   |   |   |   |   |   |   |   |  \   \   |   |   |    |  *
+* |   |\    \    |   |   |   |   |   |   |   |   |   |  |   |   |   |___|    |  *
+* |   | \    \   |   |   |   |   |   |___|   |   |   |  |   |   |           //  *
+* |___|  \____\  |___|   |___|   \__________ /   |___|  |___|   |__________//   *
+* |___|  |____|  |___|   |___|    \_________/    |___|  |___|   |__________/    *
+*                                                                               *
+*********************************************************************************
+*                                                                               *
+* Project Name: Khord Discord Bot                                               *
+* Author: github.com/kirigaine                                                  *
+* Description: My personal Discord bot. Provides a myriad of functions from     *
+*   dice rolls to music playing. Personified as a deity, hence his lack of      *
+*   social manners.                                                             *
+* Requirements: discordpy, ffmpeg                                               *
+*                                                                               *
+*********************************************************************************
+"""
+
+from random import randint, choice, choices, shuffle
 from enum import Enum
 import re
-# import os
+import os
 
-# import discord
+import discord
 from discord.ext import commands
 
 import phasmorpg
-
-
 
 class RockPaperScissors(Enum):
     """Small class to handle rps game and emoji names"""
@@ -49,27 +72,50 @@ async def age(ctx):
     await ctx.send(f"Mortal {ctx.author.mention} joined this realm on {str(ctx.author.joined_at)[:-7]}")
 
 @bot.command()
+async def dnd(ctx):
+    """Khord picks a character from our D&D campaign"""
+    log_command(ctx,'dnd')
+    await ctx.send("**" + choice(dnd_characters) + "**, you have been chosen!")
+
+@bot.command()
 async def hello(ctx):
     """Greets Khord"""
     log_command(ctx,'hello')
     await ctx.send(f"Hello, mortal {ctx.author.display_name}.")
 
 @bot.command()
-async def pray(ctx):
-    """Prays to Khord"""
-    # TO DO: Turn this into slots/gambling
-    log_command(ctx,'pray')
-    await ctx.send(choice(["*nothing happens*","Sup","Have my blessing, child of Khord"]))
+async def leave(ctx):
+    """Asks Khord to leave"""
+    log_command(ctx,'leave')
+
+    voice = ctx.voice_client
+
+    if voice:
+        await voice.disconnect()
+        await ctx.send("Fine. I know when I'm not wanted.")
+    else:
+        await ctx.send("I'm not in your mortal channel, nor would I want to be.")
 
 @bot.command()
-async def pick(ctx, *given_list):
-    """Khord will pick for you"""
-    log_command(ctx,f'pick {given_list}')
-    await ctx.send(choice(given_list))
+async def paper(ctx):
+    """Challenge Khord with paper"""
+    log_command(ctx,'paper')
 
+    result = rps_game(RockPaperScissors.NEWSPAPER)
+    await ctx.send(result)
 
 @bot.command()
-async def pgame(ctx, num_traits, num_players="4"):
+async def pause(ctx):
+    """Pauses Khord's serenading"""
+    log_command(ctx,'pause')
+    voice = ctx.voice_client
+    if voice.is_playing():
+        voice.pause()
+    else:
+        await ctx.send("Already paused / no audio playing")
+
+@bot.command()
+async def pgame(ctx, num_traits:str, num_players:str="4"):
     """Khord gives custom RPG traits for Phasmo"""
     log_command(ctx,f'pgame {num_traits} {num_players}')
 
@@ -102,6 +148,62 @@ async def pgame(ctx, num_traits, num_players="4"):
             await ctx.send(f"{message}```")
 
 @bot.command()
+async def pick(ctx, *given_list):
+    """Khord will pick for you"""
+    log_command(ctx,f'pick {given_list}')
+    if not given_list:
+        raise commands.MissingRequiredArgument(given_list)
+    await ctx.send(choice(given_list))
+
+@pick.error
+async def pick_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Usage: ;pick a1 a2 a3...")
+
+@bot.command()
+async def play(ctx, music_url:str):
+    """Khord projects your music to all minds in your subrealm"""
+    log_command(ctx,f'play {music_url}')
+
+    if ctx.author.voice and not ctx.voice_client:
+        await ctx.author.voice.channel.connect()
+        # await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_mute=True, self_deaf=True)
+        voice = ctx.voice_client
+
+        # TO DO:
+        for file in os.listdir("./"):
+           if file.endswith(".mp3"):
+                voice.play(discord.FFmpegPCMAudio('test.mp3',executable='./ffmpeg/bin/ffmpeg.exe'))
+    else:
+        await ctx.send("You're not even in the server")
+        # raise commands.CommandError("User wasn't connected to a voice channel")
+
+@bot.command()
+async def pray(ctx):
+    """Prays to Khord"""
+    # TO DO: Turn this into slots/gambling
+    log_command(ctx,'pray')
+    await ctx.send(choices(["*nothing happens*","Sup","Have my blessing, Child of Khord"], weights=(5,3,1))[0])
+
+@bot.command(alias='unpause')
+async def resume(ctx):
+    """Resumes Khord's serenading"""
+    log_command(ctx,'resume')
+    voice = ctx.voice_client
+    if voice.is_paused():
+        voice.resume()
+    else:
+        await ctx.sent("Voice not paused")
+
+@bot.command()
+async def rock(ctx):
+    """Challenge Khord with rock"""
+    log_command(ctx,'rock')
+
+    result = rps_game(RockPaperScissors.ROCK)
+    await ctx.send(result)
+
+@bot.command()
 async def roll(ctx, dice:str):
     """Khord rolls dice for you"""
     log_command(ctx,f'roll {dice}')
@@ -119,24 +221,14 @@ async def roll(ctx, dice:str):
         total += roll_outcome
         rolls = f"{rolls} [{roll_outcome}]"
     await ctx.send(f"```{rolls} = {total}```")
+
+@roll.error
+async def roll_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Usage: ;roll XdX")
+    elif isinstance(error, ValueError):
+        await ctx.send("Can't roll a die with 0 values")
     
-        
-@bot.command()
-async def rock(ctx):
-    """Challenge Khord with rock"""
-    log_command(ctx,'rock')
-
-    result = rps_game(RockPaperScissors.ROCK)
-    await ctx.send(result)
-
-@bot.command()
-async def paper(ctx):
-    """Challenge Khord with paper"""
-    log_command(ctx,'paper')
-
-    result = rps_game(RockPaperScissors.NEWSPAPER)
-    await ctx.send(result)
-
 @bot.command()
 async def scissors(ctx):
     """Challenge Khord with scissors"""
@@ -144,63 +236,6 @@ async def scissors(ctx):
 
     result = rps_game(RockPaperScissors.SCISSORS)
     await ctx.send(result)
-
-@bot.command()
-async def dnd(ctx):
-    """Khord picks a character from our D&D campaign"""
-    log_command(ctx,'dnd')
-    await ctx.send("**" + choice(dnd_characters) + "**, you have been chosen!")
-
-@bot.command()
-async def play(ctx, music_url:str):
-    """Khord projects your music to all minds in your subrealm"""
-    log_command(ctx,f'play {music_url}')
-    
-    if ctx.author.voice and not ctx.voice_client:
-        await ctx.author.voice.channel.connect()
-        # await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_mute=True, self_deaf=True)
-        # voice = ctx.voice_client
-
-        # TO DO:
-        # for file in os.listdir("./"):
-           # if file.endswith(".mp3"):
-                # voice.play(discord.FFmpegPCMAudio('test.mp3'))
-    else:
-        await ctx.send("You're not even in the server")
-        # raise commands.CommandError("User wasn't connected to a voice channel")
-
-@bot.command()
-async def leave(ctx):
-    """Asks Khord to leave"""
-    log_command(ctx,'leave')
-
-    voice = ctx.voice_client
-
-    if voice:
-        await voice.disconnect()
-        await ctx.send("Fine. I know when I'm not wanted.")
-    else:
-        await ctx.send("I'm not in your mortal channel, nor would I want to be.")
-
-@bot.command()
-async def pause(ctx):
-    """Pauses Khord's serenading"""
-    log_command(ctx,'pause')
-    voice = ctx.voice_client
-    if voice.is_playing():
-        voice.pause()
-    else:
-        await ctx.send("Already paused / no audio playing")
-
-@bot.command()
-async def resume(ctx):
-    """Resumes Khord's serenading"""
-    log_command(ctx,'resume')
-    voice = ctx.voice_client
-    if voice.is_paused():
-        voice.resume()
-    else:
-        await ctx.sent("Voice not paused")
 
 @bot.command()
 async def stop(ctx):
@@ -238,7 +273,7 @@ def log_command(ctx,user_command:str):
     print(f"[COMMAND] - [{ctx.guild.name}] {ctx.author.name}#{ctx.author.discriminator} ({ctx.author.display_name}) called: ';{user_command}'")
 
 def get_traits(count):
-    """Randomzies a copy of traits list, then pops desired amount for pgame"""
+    """Randomizes a copy of traits list, then pops desired amount for pgame"""
     traits = []
     c_copy = phasmorpg.traits.copy()
     shuffle(c_copy)
@@ -281,6 +316,10 @@ async def on_message(message):
         await message.channel.send("IT IS WHAT IT IS")
     
     await bot.process_commands(message)
+
+@bot.event
+async def on_command_error(ctx, error):
+    print(error)
 
 
 bot.run("token")
